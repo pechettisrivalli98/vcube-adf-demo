@@ -1,0 +1,235 @@
+-- SETTING UP TABLES TO UNDERSTAND "JOINS"
+CREATE TABLE orders
+(
+	o_id INT,
+	cust_id INT,
+	price INT
+);
+
+INSERT INTO orders VALUES
+(1,101,1000),
+(2,201,1100),
+(3,501,1200);
+
+CREATE TABLE customers
+(
+	cust_id INT,
+	CUST_name VARCHAR(100),
+	email VARCHAR(100)
+);
+
+INSERT INTO customers VALUES
+(101,'nag','aa@gmail.com'),
+(201,'chiru','bb@gmail.com'),
+(301,'venki','cc@gmail.com');
+
+-- **************************
+
+-- WORKING WITH "JOINS" 
+-- INNER JOIN : if you just mention JOIN, by default it treats as INNER JOIN.
+SELECT 
+	*
+FROM 
+	orders o 
+INNER JOIN 
+	customers c 
+    ON 
+		o.cust_id = c.id;
+
+-- LEFT JOIN: 
+-- 1. Customers Who Have Not Placed Any Orders (E-commerce)
+-- 2. Employees Without Assigned Projects (HR) : Employees & Project table
+
+/*SELECT e.EmployeeID,
+       e.EmployeeName,
+       p.ProjectName
+FROM Employees e
+LEFT JOIN Projects p
+ON e.EmployeeID = p.EmployeeID; */
+-- 3. Banking - Accounts Without Transactions
+/*
+SELECT a.AccountNumber,
+       t.TransactionID
+FROM Accounts a
+LEFT JOIN Transactions t
+ON a.AccountNumber = t.AccountNumber;
+*/
+-- 4. Data Engineering (Most Common Interview Use Case)
+/*
+Source Table: Sales_Staging
+Target Table: Sales_Warehouse
+You want to load only new records.
+
+Why use LEFT JOIN?
+Keeps all staging records.
+Records already in the warehouse will match.
+New records have NULL on the warehouse side and are inserted.
+
+This is a common pattern for incremental loading in Azure Data Factory, Databricks, and SQL-based ETL processes.
+-- without JOIN: Incremental load using watermark column/date column
+	SELECT *
+	FROM Orders
+	WHERE LastModifiedDate >
+	(
+	SELECT MAX(LastModifiedDate)
+	FROM DW_Orders
+	);
+
+Interview Answer:
+"A LEFT JOIN is commonly used when we need all records from the primary table regardless of whether matching data exists in another table. In data engineering, a common use case is incremental loading, where we LEFT JOIN the staging table with the target table and select records where the target key is NULL. This helps identify new records that need to be loaded into the data warehouse."
+
+
+SELECT s.*
+FROM Sales_Staging s
+LEFT JOIN Sales_Warehouse t
+ON s.OrderID = t.OrderID
+WHERE t.OrderID IS NULL;
+*/
+
+
+SELECT 
+	*
+FROM 
+	orders o 
+LEFT JOIN 
+	customers c 
+    ON 
+		o.cust_id = c.id;
+
+-- RIGHT JOIN: 
+-- Why RIGHT JOIN Is Rarely Used ? Most SQL developers rewrite a RIGHT JOIN as a LEFT JOIN because LEFT JOIN is more intuitive.
+
+-- 1. Find All Projects, Even Those Without Employees (HR)
+/*
+Business Requirement: HR wants to know which projects have not yet been assigned any employees.
+
+SELECT e.EmployeeName,
+       p.ProjectName
+FROM Employees e
+RIGHT JOIN Projects p
+ON e.ProjectID = p.ProjectID;
+
+-- 2. Banking – All Loan Schemes
+
+The bank wants to display every loan scheme, even if no customer has applied. Loan schemes with NULL customer names have received no applications.
+SELECT c.CustomerName,
+       l.LoanType
+FROM Customers c
+RIGHT JOIN LoanSchemes l
+ON c.LoanType = l.LoanType;
+
+-- 3. Retail – All Product Categories
+A retailer wants to see every product category, even if no products exist in that category. Categories with NULL product names are currently empty.
+SELECT p.ProductName,
+       c.CategoryName
+FROM Products p
+RIGHT JOIN Categories c
+ON p.CategoryID = c.CategoryID;
+
+4. Data Engineering Interview Example:
+Imagine you have:
+FactSales – daily sales data.
+DimDate – calendar table containing every date of the year.
+
+You need a report that shows all dates, even if there were no sales. Dates with NULL sales identify days with no transactions. This is useful for dashboards, trend analysis, and detecting missing data.
+
+SELECT d.Date,
+       f.SalesAmount
+FROM FactSales f
+RIGHT JOIN DimDate d
+ON f.Date = d.Date;
+
+
+*/
+SELECT 
+	*
+FROM 
+	orders o 
+RIGHT JOIN 
+	customers c 
+    ON 
+		o.cust_id = c.id;
+        
+-- FULL JOIN (Not Supported in MySQL, however can be achieved using "UNION")
+SELECT 
+	*
+FROM 
+	orders o 
+FULL JOIN 
+	customers c 
+    ON 
+		o.cust_id = c.id;
+        
+        
+-- UNION/UNION all
+
+/* 1.E-Commerce – Combine Current and Archived Orders : Many companies archive old orders into a separate table.
+SELECT OrderID,
+       CustomerID,
+       OrderDate
+FROM CurrentOrders
+
+UNION
+
+SELECT OrderID,
+       CustomerID,
+       OrderDate
+FROM ArchivedOrders;
+
+2. Data Engineering (Real-Time ETL): Suppose sales data arrives daily from two countries. Before loading into Azure Synapse, Snowflake, or Databricks Delta Lake, combine data from multiple countries into one unified dataset.
+
+SELECT OrderID,
+       CustomerID,
+       Amount
+FROM Sales_India
+
+UNION
+
+SELECT OrderID,
+       CustomerID,
+       Amount
+FROM Sales_USA;
+
+
+"In real-world Data Engineering projects, UNION is commonly used to combine data from multiple sources such as different branches, regions, or yearly tables into a single dataset. For example, if sales data is stored separately for India and the USA, we use UNION to create one consolidated report. UNION removes duplicate rows automatically, while UNION ALL retains duplicates and performs faster. In ETL pipelines, UNION ALL is generally preferred when source data is known to be unique or when duplicate records need to be preserved
+*/
+SELECT * FROM orders o 
+
+UNION
+
+SELECT * FROM customers c 
+
+-- CROSS JOIN
+SELECT * FROM orders o CROSS JOIN customers c;
+
+/*
+E-Commerce – Generate All Product Variants (Most Common)
+Business Requirement: An online shopping company sells T-shirts in different colors and sizes.
+
+SELECT c.Color,
+       s.Size
+FROM Colors c
+CROSS JOIN Sizes s;
+
+
+Data Engineer Interview Answer:
+"A CROSS JOIN is used when we need every possible combination between two datasets. A common real-time use case is generating product variants, such as every combination of colors and sizes in an e-commerce application. In Data Engineering, CROSS JOIN is also used to generate test data, create store-date combinations for reporting, build employee-month records, or create all product-promotion combinations. Since it produces a Cartesian product, it should be used carefully on large datasets because the number of rows grows rapidly."
+*/
+
+-----ASSIGNMENT-----------
+/* Use tables dim_customers and fact_sales and do the below assignment.
+ Q. Display Total amount spent by customers. 
+	select customer_id, sum(unit_price) as sum
+	from dim_customer dc inner join fact_sales fs 
+	on dc.customer_key = fs.customer_key
+Q. Display Total amount spent by customers who belong to state "Wyoming" and the gender is Female
+	select customer_id, sum(unit_price) as sum
+	from dim_customer dc inner join fact_sales fs 
+	on dc.customer_key = fs.customer_key
+	where gender = 'F' and state = 'Wyoming'
+	group by customer_id
+        
+*/        
+        
+        
+        
